@@ -599,6 +599,92 @@ export const LAYOUT_CSS = `/* ---------- mobile-only layout (narrow viewport AND
     /* Must not clip the model dropdown; the model trigger clips its own label. */
     overflow: visible;
   }
+
+  /* --- 2026-11-05 店主：输入框底部「左右两边固定的除外，中间区域应该是可滚动
+     区域，不能重叠」。宿主把 权限 / 计划 / 技能 / 专家 / 📎 全放进 _tools 车道，
+     原来的 flex:0 1 auto + 子项 shrink:1 在 390px 屏上把它们压成一坨（截图：
+     控件互相叠字）。改成车道自己横向滚，里面的东西一律不收缩；右簇不参与滚动，
+     所以它内部的余额面板（QuotaButton 的 role=dialog，absolute 非 portal）不会
+     被滚动容器裁掉。
+     !important 是硬要求：App 会往页面注入一张读不到 cssRules 的样式表，同特异性
+     但没有 !important 的声明会被它压掉（本插件早期的尺寸规则就是这么失效的）。 */
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"] {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+    /* 横滑到尽头不触发 WebView 的返回手势 */
+    overscroll-behavior-x: contain !important;
+  }
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"]::-webkit-scrollbar {
+    display: none !important;
+  }
+  /* 车道里的**所有**后代都不许压缩。只锁一层（> *）不够：技能 / 专家 / 📎 都包在
+     slot 的中间容器里，那一层仍是默认 shrink:1，窄屏上照样挤成一坨。 */
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"] * {
+    flex-shrink: 0 !important;
+  }
+  /* 胶住的是圆钮本身，滚过的控件会从钮身边缘擦过去；伪元素在按钮层叠上下文内、
+     按钮背景之下，只盖穿过它的控件，不盖圆底和图标。 */
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"] button[class*="_add"] {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 3 !important;
+  }
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"] button[class*="_add"]::before {
+    content: "" !important;
+    position: absolute !important;
+    top: -8px !important;
+    bottom: -8px !important;
+    left: -8px !important;
+    right: -10px !important;
+    background: var(--dsw-specific-input-major) !important;
+    z-index: -1 !important;
+  }
+  /* 车道自己内部的弹层（+ 的 listbox、agency-agents 的 .aag-menu 都是 absolute
+     向上弹）在打开期间必须放开裁剪。 */
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_tools"]:has([role="listbox"], [class*="aag-menu"]) {
+    overflow: visible !important;
+  }
+  /* 右翼不参与滚动：不收缩即可，别加背景/定位 —— 余额面板和模型菜单都挂在
+     这棵子树里，加 overflow 或层叠上下文都可能把弹层挡掉。 */
+  [data-phase] [class*="_card"]:has(textarea, [data-composer-input]) [class*="_row"]:has([class*="_trailing"]) > [class*="_trailing"] {
+    flex: 0 0 auto !important;
+  }
+
+  /* --- 2026-11-05 底部信息带换行 + save-token 独占第二行 ---
+     宿主把 conversation.composer.dock 的所有注册项先包进一层**无类名 div**再交给
+     dock；真机 dump 实测那层是 w341 / sw379 的 nowrap，dock 的 flex-wrap 管不到它，
+     于是所有 chip 共用一行、超出部分压在一起。给那层 display:contents，chip 直接
+     变成 dock 的 flex item，换行才轮到 dock 决定。save-token（类名前缀 st-）是
+     「压缩省了多少」的统计条，店主希望它单独一行：不看宽度够不够，直接占满一行。 */
+  [data-composer-dock],
+  [data-composer-dock] > * {
+    flex-wrap: wrap !important;
+    row-gap: 4px !important;
+  }
+  [data-phase] [data-composer-dock] > *:not([class]):not([id]) {
+    display: contents !important;
+  }
+  [data-phase] [data-composer-dock] *:is([class*="st-"], :has([class*="st-"])) {
+    flex-basis: 100% !important;
+    flex-grow: 0 !important;
+  }
+
+  /* --- 2026-11-05 右侧栏「开始」引导页不能滚 ---
+     宿主 GuideBody（[data-sidebar-right-guide]）自己是 min-height:100% +
+     justify-content:center 的 flex 列，卡片一多就向上下两头溢出；而它的父级
+     tabBody 是 height:100% + overflow:hidden。结果两头被裁、中间还滚不动。
+     改成「占满剩余高度 + 顶部对齐 + 自己纵向滚」。 */
+  [data-sidebar-right-guide] {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    justify-content: flex-start !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+  }
   /* Permission / plan controls share the tools lane inside the a2-style
      'div.modes' container (class survives as 'css.modes'; audit doc §10.1 /
      E-1). The positional anchor '> :first-child > :nth-child(2)' was already

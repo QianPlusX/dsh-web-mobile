@@ -14,6 +14,22 @@
 
 ---
 
+## 🔧 本地修改说明（2026-11-05）
+
+> 本仓库固定在 **v3.2.1** 基线上，只追加了 3 处移动端修复，全部是纯 CSS（`src/client/styles/layout.css.ts`），只在 ≤1023px 且触屏的设备上生效，桌面端完全 no-op。
+
+| # | 问题 | 修法 |
+|---|------|------|
+| 1 | 输入框底部中间控件在 390px 屏上互相重叠（权限 / 计划 / 技能 / 专家 / 📎 挤成一坨） | `_tools` 车道改成横向滚动容器；车道内**所有**后代 `flex-shrink:0`；`+` 按钮 sticky 在左缘并加同色遮罩；右簇不参与滚动，所以余额弹窗不会被裁 |
+| 2 | 底部信息带（token 用量 / save-token）挤成一行、尾部被截断 | dock 与子项允许换行；宿主包住 chips 的那层无类名 div 设 `display:contents`；save-token（`st-*`）`flex-basis:100%` 独占第二行 |
+| 3 | 右侧栏「开始」引导页无法滚动、上下被裁 | GuideBody 改成 `min-height:0` + `flex:1 1 auto` + `justify-content:flex-start` + `overflow-y:auto`，占满剩余高度并自己滚 |
+
+关键约束：**DSH App 会往页面注入一张读不到 `cssRules` 的样式表**，同特异性但没有 `!important` 的声明会被它压掉，所以本仓库里 composer / dock 相关规则一律带 `!important`。
+
+改动后已跑过 `pnpm run build`（`tsc` + `scripts/build-client.mjs`），`lib/client.js` 与 `lib/types` 已同步重建。
+
+---
+
 **dsh-web-mobile** 是 DeepSeek Harness Web UI 的移动端适配插件——让 DSH 在手机竖屏下也能好好用：
 
 - **弹窗变浮层**：设置、文件树、预览改成底部 sheet，触屏好点
